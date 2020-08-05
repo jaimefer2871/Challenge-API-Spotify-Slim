@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Application\Actions\Album;
@@ -27,12 +28,15 @@ class ListAlbumAction extends Action
         $clientId       = $_ENV['CLIENT_ID'];
         $clientSecret   = $_ENV['CLIENT_SECRET'];
 
-        $credentials = base64_encode($clientId.':'.$clientSecret);
+        $credentials = base64_encode($clientId . ':' . $clientSecret);
         $data = [];
         $token = null;
 
         try {
-            $client = new Client(['base_uri' => 'https://accounts.spotify.com/api/']);
+            $client = new Client([
+                'base_uri' => 'https://accounts.spotify.com/api/',
+                'verify' => false
+            ]);
             $res = $client->request('POST', 'token', [
                 'headers' => [
                     'Authorization' => "Basic $credentials"
@@ -67,16 +71,19 @@ class ListAlbumAction extends Action
         }
 
         try {
-            $client = new Client(['base_uri' => $this->endpoint]);
+            $client = new Client([
+                'base_uri' => $this->endpoint,
+                'verify' => false
+            ]);
             $res = $client->request('GET', 'search', [
-                    'headers' => [
-                        'Authorization' => 'Bearer '.$this->token
-                    ],
-                    'query' => [
-                        'q' => $artist,
-                        'type' => 'artist'
-                    ]
-                ]);
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token
+                ],
+                'query' => [
+                    'q' => $artist,
+                    'type' => 'artist'
+                ]
+            ]);
             $data = json_decode($res->getBody()->getContents());
 
             if (!empty($data->artists->items)) {
@@ -99,19 +106,21 @@ class ListAlbumAction extends Action
         $albums = [];
 
         try {
-            $client = new Client(['base_uri' => $this->endpoint]);
+            $client = new Client([
+                'base_uri' => $this->endpoint,
+                'verify' => false
+            ]);
             $res = $client->request('GET', "artists/$idArtist/albums", [
-                    'headers' => [
-                        'Authorization' => 'Bearer '.$this->token
-                    ],
-                    'query' => [
-                        'include_groups' => 'album'
-                    ]
-                ]);
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token
+                ],
+                'query' => [
+                    'include_groups' => 'album'
+                ]
+            ]);
             $data = json_decode($res->getBody()->getContents());
             $albums = $data->items;
         } catch (\Exception $e) {
-
         }
 
         return $albums;
