@@ -3,16 +3,58 @@ declare(strict_types=1);
 
 namespace App\Application\Actions\Album;
 
-use App\Application\Actions\Action;
-use Psr\Http\Message\ResponseInterface as Response;
+use Exception;
 use GuzzleHttp\Client;
+use Psr\Log\LoggerInterface;
+use App\Application\Actions\Action;
+use App\Exception\MissingArtistException;
+use Psr\Http\Message\ResponseInterface as Response;
 
 class ListAlbumAction extends Action
 {
-
     protected $endpoint = 'https://api.spotify.com/v1/';
-    protected $token = 'BQCR0BeSfAHBV56Esv295k_SXGY75pLZniJUS4KDYIv8tjRSrzxRENdULxZoC5Xkx9PmSPuzGPZMjiPM4lc';
+    protected $token;
 
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->token = $this->getToken();
+
+        parent::__construct($logger);
+    }
+
+    protected function getToken()
+    {
+        $clientId       = $_ENV['CLIENT_ID'];
+        $clientSecret   = $_ENV['CLIENT_SECRET'];
+
+        $credentials = base64_encode($clientId.':'.$clientSecret);
+        $data = [];
+        $token = null;
+
+        try {
+            $client = new Client(['base_uri' => 'https://accounts.spotify.com/api/']);
+            $res = $client->request('POST', 'token', [
+                'headers' => [
+                    'Authorization' => "Basic $credentials"
+                ],
+                'form_params' => [
+                    'grant_type' => 'client_credentials'
+                ]
+            ]);
+            $data = json_decode($res->getBody()->getContents());
+
+            $token = $data->access_token;
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage());
+        }
+
+        return $token;
+    }
+    /**
+     * get artists id by edpoint spotify
+     *
+     * @return void
+     */
     protected function getArtistId()
     {
         $request = $this->request;
@@ -36,9 +78,16 @@ class ListAlbumAction extends Action
                     ]
                 ]);
             $data = json_decode($res->getBody()->getContents());
-            $id = $data->artists->items[0]->id;
+
+            if (!empty($data->artists->items)) {
+                $id = $data->artists->items[0]->id;
+            } else {
+                throw new MissingArtistException('No se encontro ningun artista');
+            }
+        } catch (MissingArtistException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            $data = null;
+            throw $e;
         }
 
         return $id;
@@ -46,7 +95,7 @@ class ListAlbumAction extends Action
 
     protected function getAllDiscography($idArtist = null)
     {
-        $data = [];
+        $data   = [];
         $albums = [];
 
         try {
@@ -62,11 +111,12 @@ class ListAlbumAction extends Action
             $data = json_decode($res->getBody()->getContents());
             $albums = $data->items;
         } catch (\Exception $e) {
-            // $data = [];
+
         }
 
         return $albums;
     }
+
     /**
      * {@inheritdoc}
      */
@@ -76,13 +126,15 @@ class ListAlbumAction extends Action
         $artistId   = $this->getArtistId();
         $albums     = $this->getAllDiscography($artistId);
 
-        foreach($albums as $album) {
-            $payload[] = [
-                'name'      => $album->name,
-                'released'  => $album->release_date,
-                'tracks'    => $album->total_tracks,
-                'cover'     => $album->images[0]
-            ];
+        if (!empty($albums)) {
+            foreach ($albums as $album) {
+                $payload[] = [
+                    'name'      => $album->name,
+                    'released'  => $album->release_date,
+                    'tracks'    => $album->total_tracks,
+                    'cover'     => $album->images[0]
+                ];
+            }
         }
 
         return $this->respondWithData($payload);
