@@ -1,5 +1,8 @@
 REQUERIMIENTOS:
-* PHP 7.2 o superior
+* PHP 7.3 o superior
+* Activar extension openssl en php.ini
+
+INSTALACION:
 
 1. Clonar mediante git: git clone https://github.com/jaimefer2871/test-api-slim.git
 
