@@ -1,3 +1,6 @@
+DESCRIPCION
+* Proyecto de prueba para consumo de API spotify, usando el framework Slim 4
+
 REQUERIMIENTOS:
 * PHP 7.3 o superior
 * Activar extension openssl en php.ini
